@@ -1,6 +1,6 @@
 # 셀러AI (SellerAI)
 
-스마트스토어·쿠팡 셀러를 위한 상품등록 AI 도우미. 상품명 후보, 검색 키워드, 상세 문구를 한 번에 생성합니다. (Phase 1 MVP)
+스마트스토어·쿠팡 셀러를 위한 상품등록 AI 도우미. 상품명 후보, 검색 키워드, 상세 문구를 한 번에 생성합니다. (Phase 1 MVP + Phase 2)
 
 ## 실행 방법
 
@@ -14,6 +14,17 @@ npm install
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=          # 비우면 claude-haiku-5-5
 FREE_DAILY_LIMIT=5        # IP당 하루 무료 생성 횟수
+```
+
+Phase 2 기능(로그인·기록·구독·CSV)은 아래 외부 서비스를 설정해야 동작합니다. 설정하지 않으면 Phase 1처럼 비로그인 IP 한도로만 동작합니다.
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=   # 서버 전용. 절대 NEXT_PUBLIC_으로 노출 금지
+NEXT_PUBLIC_TOSS_CLIENT_KEY=
+TOSS_SECRET_KEY=
+CRON_SECRET=                 # 갱신 결제 크론 인증용 임의의 긴 문자열
 ```
 
 ```bash
@@ -32,3 +43,13 @@ npm run build   # 프로덕션 빌드
 
 - 일일 한도는 인메모리로 카운트하므로 서버리스 인스턴스 재시작·분리 시 초기화될 수 있습니다. Phase 2에서 DB로 이전 예정입니다.
 - Anthropic 호출은 서버(`app/api/generate/route.ts`)에서만 이루어집니다.
+
+## Phase 2 설정
+
+1. **Supabase**: 프로젝트를 만들고 SQL Editor에서 `supabase/schema.sql`을 실행합니다. Authentication → Providers에서 Email을 켜고, 필요하면 이메일 인증 여부를 설정합니다.
+2. **토스페이먼츠**: 자동결제(빌링) 계약 후 클라이언트 키·시크릿 키를 환경변수에 넣습니다. 테스트 키로 먼저 확인하세요.
+3. **구독 갱신**: `vercel.json`의 Cron이 매일 `/api/billing/renew`를 호출합니다. Vercel에 `CRON_SECRET`을 설정하면 `Authorization: Bearer` 헤더가 자동으로 붙습니다.
+
+플랜별 한도: 무료 하루 5회(`FREE_DAILY_LIMIT`), 베이직 월 100회, 프로 월 500회 + CSV 일괄 생성. 한도 기간은 UTC 기준입니다.
+
+CSV 형식: 첫 행 헤더 `상품종류,핵심특징,타겟고객`, 핵심특징 안의 여러 항목은 `|`로 구분합니다.
